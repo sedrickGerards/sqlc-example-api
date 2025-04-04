@@ -11,3 +11,4 @@ WHERE id = $1;
 SELECT * FROM message
 WHERE thread = $1
 ORDER BY created_at DESC;
+
