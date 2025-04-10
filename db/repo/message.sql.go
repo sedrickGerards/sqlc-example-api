@@ -145,3 +145,17 @@ func (q *Queries) GetMessagesByThread(ctx context.Context, threadID string) ([]M
 	}
 	return items, nil
 }
+
+
+const deleteMessage = `-- name: DeleteMessage :exec
+DELETE FROM message
+WHERE id = $1;
+`
+
+func (q *Queries) DeleteMessage(ctx context.Context, id string) error {
+  _,err := q.db.Exec(ctx, deleteMessage, id)
+ if err != nil {
+		return err
+	}
+	return err
+}

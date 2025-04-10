@@ -14,6 +14,7 @@ type Querier interface {
 	EditMessage(ctx context.Context, arg EditMessageParams) ([]Message, error)
 	GetMessageByID(ctx context.Context, id string) (Message, error)
 	GetMessagesByThread(ctx context.Context, threadID string) ([]Message, error)
+	DeleteMessage(ctx context.Context,id string) error
 }
 
 var _ Querier = (*Queries)(nil)

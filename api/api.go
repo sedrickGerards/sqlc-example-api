@@ -32,6 +32,7 @@ func (h *MessageHandler) WireHttpHandler() http.Handler {
 	r.GET("/thread/:id/messages", h.handleGetThreadMessages)
 	r.POST("/thread", h.handleCreateThread)
 	r.PATCH("/message", h.handleEditMessage)
+	r.DELETE("/message/:id", h.handleDeleteMessage)
 
 	return r
 }
@@ -130,4 +131,30 @@ func (h *MessageHandler) handleEditMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, message)
+}
+
+
+func (h *MessageHandler) handleDeleteMessage(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Id not not set"})
+		return
+	}
+
+	_, errs := h.querier.GetMessageByID(c, id)
+	if errs != nil {
+		if errors.Is(errs, sql.ErrNoRows) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": errs.Error()})
+			return
+		}
+		return
+	}
+
+	 err := h.querier.DeleteMessage(c, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"Success": "Message has been deleted"})
 }
