@@ -10,56 +10,65 @@ import (
 )
 
 const createMessage = `-- name: CreateMessage :one
-INSERT INTO message (thread, sender, content)
+INSERT INTO message (thread_id, sender, content)
 VALUES ($1, $2, $3)
-RETURNING id, thread, sender, content, created_at
+RETURNING id, thread_id, sender, content, created_at, updated_at
 `
 
 type CreateMessageParams struct {
-	Thread  string `json:"thread"`
-	Sender  string `json:"sender"`
-	Content string `json:"content"`
+	ThreadID string `json:"thread_id"`
+	Sender   string `json:"sender"`
+	Content  string `json:"content"`
 }
 
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error) {
-	row := q.db.QueryRow(ctx, createMessage, arg.Thread, arg.Sender, arg.Content)
+	row := q.db.QueryRow(ctx, createMessage, arg.ThreadID, arg.Sender, arg.Content)
 	var i Message
 	err := row.Scan(
 		&i.ID,
-		&i.Thread,
+		&i.ThreadID,
 		&i.Sender,
 		&i.Content,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const getMessageByID = `-- name: GetMessageByID :one
-SELECT id, thread, sender, content, created_at FROM message
-WHERE id = $1
+const createThread = `-- name: CreateThread :one
+INSERT INTO "thread" (thread)
+VALUES($1)
+RETURNING id, thread, created_at
+
 `
 
-func (q *Queries) GetMessageByID(ctx context.Context, id string) (Message, error) {
-	row := q.db.QueryRow(ctx, getMessageByID, id)
-	var i Message
-	err := row.Scan(
-		&i.ID,
-		&i.Thread,
-		&i.Sender,
-		&i.Content,
-		&i.CreatedAt,
-	)
+type CreateThreadParams struct {
+	Thread string `json:"thread"`
+}
+
+func (q *Queries) CreateThread(ctx context.Context, arg CreateThreadParams) (Thread, error) {
+	row := q.db.QueryRow(ctx, createThread, arg.Thread)
+	var i Thread
+	err := row.Scan(&i.ID, &i.Thread, &i.CreatedAt)
 	return i, err
 }
 
-const getMessagesByThread = `-- name: GetMessagesByThread :many
-SELECT id, thread, sender, content, created_at FROM message
-WHERE thread = $1
-ORDER BY created_at DESC
+const editMessage = `-- name: EditMessage :many
+UPDATE message
+SET content = $1,
+    sender = $2
+ WHERE id = $3
+ RETURNING id, thread_id, sender, content, created_at, updated_at
 `
 
-func (q *Queries) GetMessagesByThread(ctx context.Context, thread string) ([]Message, error) {
-	rows, err := q.db.Query(ctx, getMessagesByThread, thread)
+type EditMessageParams struct {
+	Content string `json:"content"`
+	Sender  string `json:"sender"`
+	ID      string `json:"id"`
+}
+
+func (q *Queries) EditMessage(ctx context.Context, arg EditMessageParams) ([]Message, error) {
+	rows, err := q.db.Query(ctx, editMessage, arg.Content, arg.Sender, arg.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -69,10 +78,63 @@ func (q *Queries) GetMessagesByThread(ctx context.Context, thread string) ([]Mes
 		var i Message
 		if err := rows.Scan(
 			&i.ID,
-			&i.Thread,
+			&i.ThreadID,
 			&i.Sender,
 			&i.Content,
 			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMessageByID = `-- name: GetMessageByID :one
+SELECT id, thread_id, sender, content, created_at, updated_at FROM message
+WHERE id = $1
+`
+
+func (q *Queries) GetMessageByID(ctx context.Context, id string) (Message, error) {
+	row := q.db.QueryRow(ctx, getMessageByID, id)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.ThreadID,
+		&i.Sender,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getMessagesByThread = `-- name: GetMessagesByThread :many
+SELECT id, thread_id, sender, content, created_at, updated_at FROM message
+WHERE thread_id = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetMessagesByThread(ctx context.Context, threadID string) ([]Message, error) {
+	rows, err := q.db.Query(ctx, getMessagesByThread, threadID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Message{}
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThreadID,
+			&i.Sender,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

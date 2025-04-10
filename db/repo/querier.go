@@ -10,8 +10,10 @@ import (
 
 type Querier interface {
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error)
+	CreateThread(ctx context.Context, arg CreateThreadParams) (Thread, error)
+	EditMessage(ctx context.Context, arg EditMessageParams) ([]Message, error)
 	GetMessageByID(ctx context.Context, id string) (Message, error)
-	GetMessagesByThread(ctx context.Context, thread string) ([]Message, error)
+	GetMessagesByThread(ctx context.Context, threadID string) ([]Message, error)
 }
 
 var _ Querier = (*Queries)(nil)
